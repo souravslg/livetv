@@ -61,22 +61,51 @@
       border: 1px solid rgba(255, 255, 255, 0.15);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
-    .bottom-banner {
+    .bottom-watermark {
       position: absolute;
-      bottom: 20px;
+      bottom: 25px;
       left: 50%;
       transform: translateX(-50%);
-      max-width: 90%;
-      width: 650px;
+      text-align: center;
       z-index: 9999;
       pointer-events: none; /* Allows clicks to pass through to the player underneath */
       user-select: none;
-      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6));
-    }
-    .bottom-banner img {
       width: 100%;
-      height: auto;
-      display: block;
+      max-width: 90%;
+    }
+    .bottom-watermark .main-text {
+      color: #ffffff;
+      font-size: 24px;
+      font-weight: 700;
+      text-shadow: 0 0 3px #ff3b30, 0 0 6px #ff3b30, 0 2px 4px rgba(0, 0, 0, 0.9);
+      margin-bottom: 2px;
+      letter-spacing: 0.5px;
+    }
+    .bottom-watermark .visit-text {
+      color: #ffffff;
+      font-size: 22px;
+      font-weight: 700;
+      text-shadow: 0 0 3px #ff3b30, 0 0 6px #ff3b30, 0 2px 4px rgba(0, 0, 0, 0.9);
+      margin-bottom: 4px;
+      letter-spacing: 0.5px;
+    }
+    .bottom-watermark .powered-text {
+      color: #e64a19;
+      font-size: 14px;
+      font-weight: 600;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+      letter-spacing: 0.5px;
+    }
+    @media (max-width: 768px) {
+      .bottom-watermark .main-text {
+        font-size: 16px;
+      }
+      .bottom-watermark .visit-text {
+        font-size: 14px;
+      }
+      .bottom-watermark .powered-text {
+        font-size: 10px;
+      }
     }
     .live-dot {
       width: 8px;
@@ -109,8 +138,10 @@
       <span class="live-dot"></span>
       IPTVINDIA Live
     </div>
-    <div class="bottom-banner">
-      <img src="banner.png" alt="IPTV India Banner">
+    <div class="bottom-watermark">
+      <div class="main-text">Watch your favourite Tv Channels</div>
+      <div class="visit-text">visit: www.iptvindia.co.in</div>
+      <div class="powered-text">Powered by SrV Creation Team</div>
     </div>
     <iframe 
       id="live-stream-player"
