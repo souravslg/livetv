@@ -7,6 +7,11 @@
   <meta name="description" content="Watch IPTVINDIA Live Stream in high quality. Enjoy live sports, football, world cup matches, and exclusive entertainment broadcasts.">
   <meta name="keywords" content="IPTVINDIA, live stream, watch live, sports streaming, world cup live">
   <meta name="robots" content="index, follow">
+  
+  <!-- Shaka Player CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/shaka-player.ui.min.js" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/controls.min.css" crossorigin="anonymous">
+
   <style>
     html, body {
       margin: 0;
@@ -20,8 +25,9 @@
     main {
       width: 100%;
       height: 100%;
+      position: relative;
     }
-    iframe, video {
+    .shaka-video-container, video {
       width: 100%;
       height: 100%;
       border: none;
@@ -91,7 +97,7 @@
       letter-spacing: 0.5px;
     }
     .bottom-watermark .powered-text {
-      color: #e64a19;
+      color: #ff3b30;
       font-size: 14px;
       font-weight: 600;
       text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
@@ -130,40 +136,91 @@
         opacity: 0.6;
       }
     }
+    
+    /* Override some Shaka Player UI defaults for a cleaner look */
+    .shaka-overflow-menu, .shaka-settings-menu {
+      background-color: rgba(0, 0, 0, 0.9) !important;
+      border-radius: 8px;
+    }
   </style>
 </head>
 <body>
-  <main style="position: relative;">
+  <main>
     <h1 class="sr-only">IPTVINDIA Live Stream</h1>
     <div class="watermark">
       <span class="live-dot"></span>
       IPTVINDIA Live
     </div>
+    
     <div class="bottom-watermark">
       <div class="main-text">Watch your favourite Tv Channels</div>
       <div class="visit-text">visit: www.iptvindia.co.in</div>
       <div class="powered-text">Powered by SrV Creation Team</div>
     </div>
-    <iframe 
-      id="live-stream-player"
-      title="IPTVINDIA Live Stream Player"
-      allow="autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen" 
-      allowfullscreen>
-    </iframe>
+
+    <!-- Shaka Player Container -->
+    <div class="shaka-video-container" data-shaka-player-container style="width: 100%; height: 100%;">
+      <video 
+        autoplay 
+        playsinline 
+        id="live-stream-player" 
+        data-shaka-player 
+        style="width: 100%; height: 100%; object-fit: contain;">
+      </video>
+    </div>
   </main>
 
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const iframe = document.getElementById('live-stream-player');
-      
-      // Determine protocol-appropriate URL to avoid mixed content block on HTTPS,
-      // while still supporting HTTP when accessed locally or on non-secure environments.
-      const streamUrl = window.location.protocol === 'https:' 
-        ? 'https://flixflare.shop/mytv/master.m3u8?id=334869'
-        : 'http://flixflare.shop/mytv/master.m3u8?id=334869';
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Install Shaka Player polyfills
+      shaka.polyfill.installAll();
 
-      // Load the stream using the online HLS Player tool to ensure broad compatibility and correct CORS policies.
-      iframe.src = `https://hlsplayer.net/?url=${encodeURIComponent(streamUrl)}`;
+      if (!shaka.Player.isBrowserSupported()) {
+        console.error('Browser is not supported by Shaka Player.');
+        return;
+      }
+
+      const video = document.getElementById('live-stream-player');
+      const container = video.parentElement;
+      const player = new shaka.Player();
+      await player.attach(video);
+
+      // Initialize Shaka UI Overlay
+      const ui = new shaka.ui.Overlay(player, container, video);
+      ui.configure({
+        controlPanelElements: [
+          'play_pause', 'time_and_duration', 'mute', 'volume',
+          'spacer', 'picture_in_picture', 'quality', 'fullscreen'
+        ],
+        volumeBarColors: {
+          base: 'rgba(255, 255, 255, 0.2)',
+          level: '#ff3b30'
+        },
+        seekBarColors: {
+          base: 'rgba(255, 255, 255, 0.1)',
+          buffered: 'rgba(255, 255, 255, 0.3)',
+          played: '#ff3b30'
+        }
+      });
+
+      // Stream proxy URL to bypass HTTPS mixed content block and CORS issues
+      const streamUrl = 'https://worker-damp-poetry-68b1.1doi3.workers.dev/http://flixflare.shop/mytv/master.m3u8?id=334869';
+
+      player.addEventListener('error', (event) => {
+        console.error('Shaka Player Error:', event.detail);
+      });
+
+      try {
+        await player.load(streamUrl);
+        console.log('Stream loaded successfully.');
+        
+        // Attempt autoplay
+        video.play().catch(err => {
+          console.log('Autoplay prevented. Waiting for user interaction:', err);
+        });
+      } catch (error) {
+        console.error('Error loading stream:', error);
+      }
     });
   </script>
 </body>
