@@ -7,7 +7,6 @@
   <meta name="description" content="Watch IPTVINDIA Live Stream in high quality. Enjoy live sports, football, world cup matches, and exclusive entertainment broadcasts.">
   <meta name="keywords" content="IPTVINDIA, live stream, watch live, sports streaming, world cup live">
   <meta name="robots" content="index, follow">
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
   <style>
     html, body {
       margin: 0;
@@ -145,67 +144,26 @@
       <div class="visit-text">visit: www.iptvindia.co.in</div>
       <div class="powered-text">Powered by SrV Creation Team</div>
     </div>
-    <video 
+    <iframe 
       id="live-stream-player"
       title="IPTVINDIA Live Stream Player"
-      controls 
-      autoplay 
-      playsinline>
-    </video>
+      allow="autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen" 
+      allowfullscreen>
+    </iframe>
   </main>
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const video = document.getElementById('live-stream-player');
+      const iframe = document.getElementById('live-stream-player');
       
-      // Select protocol-appropriate URL to avoid mixed content block on HTTPS,
+      // Determine protocol-appropriate URL to avoid mixed content block on HTTPS,
       // while still supporting HTTP when accessed locally or on non-secure environments.
       const streamUrl = window.location.protocol === 'https:' 
         ? 'https://flixflare.shop/mytv/master.m3u8?id=334869'
         : 'http://flixflare.shop/mytv/master.m3u8?id=334869';
 
-      if (Hls.isSupported()) {
-        const hls = new Hls({
-          maxMaxBufferLength: 10,
-          enableWorker: true,
-          lowLatencyMode: true
-        });
-        hls.loadSource(streamUrl);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          video.play().catch(err => {
-            console.log("Autoplay prevented. User interaction required:", err);
-          });
-        });
-        
-        // Error handling for robust playback recovery
-        hls.on(Hls.Events.ERROR, function (event, data) {
-          if (data.fatal) {
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                console.warn('Fatal network error. Attempting recovery...');
-                hls.startLoad();
-                break;
-              case Hls.ErrorTypes.MEDIA_ERROR:
-                console.warn('Fatal media error. Attempting recovery...');
-                hls.recoverMediaError();
-                break;
-              default:
-                console.error('Fatal unrecoverable error. Destroying HLS instance...');
-                hls.destroy();
-                break;
-            }
-          }
-        });
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Native HLS support (mostly Safari and mobile iOS browsers)
-        video.src = streamUrl;
-        video.addEventListener('loadedmetadata', () => {
-          video.play().catch(err => {
-            console.log("Autoplay prevented. User interaction required:", err);
-          });
-        });
-      }
+      // Load the stream using the online HLS Player tool to ensure broad compatibility and correct CORS policies.
+      iframe.src = `https://hlsplayer.net/?url=${encodeURIComponent(streamUrl)}`;
     });
   </script>
 </body>
