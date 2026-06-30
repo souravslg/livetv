@@ -166,7 +166,8 @@
       const video = document.getElementById('live-stream-player');
       
       const streamUrl = 'https://yowaimo.in/Sflex-ArtlPVT0719/ZEE_CAFE_HD.m3u8';
-      const PROXY = 'https://corsproxy.io/?';
+      // Use our own Vercel serverless proxy at /api/proxy — same domain, no CORS issues.
+      const PROXY = '/api/proxy?url=';
 
       if (Hls.isSupported()) {
         const hls = new Hls({
