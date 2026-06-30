@@ -165,11 +165,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       const video = document.getElementById('live-stream-player');
       
-      // Use corsproxy.io to bypass mixed-content and CORS blocks on secure HTTPS environments (Vercel/GitHub Pages).
-      // Use direct HTTP URL for local/non-secure testing environments.
-      const streamUrl = window.location.protocol === 'https:' 
-        ? 'https://corsproxy.io/?http%3A%2F%2Fflixflare.shop%2Fmytv%2Fmaster.m3u8%3Fid%3D334869'
-        : 'http://flixflare.shop/mytv/master.m3u8?id=334869';
+      const streamUrl = 'https://yowaimo.in/Sflex-ArtlPVT0719/ZEE_CAFE_HD.m3u8';
 
       if (Hls.isSupported()) {
         const hls = new Hls({
