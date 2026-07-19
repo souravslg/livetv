@@ -178,7 +178,7 @@
           // and the stream server does not send Access-Control-Allow-Origin headers.
           xhrSetup: function(xhr, url) {
             // Avoid double-proxying if the URL is already going through the proxy
-            if (!url.startsWith(PROXY)) {
+            if (!url.includes('/api/proxy?url=')) {
               xhr.open('GET', PROXY + encodeURIComponent(url), true);
             }
           }

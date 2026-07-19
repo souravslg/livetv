@@ -1,6 +1,7 @@
 /**
  * Cloudflare Pages Function proxy for HLS streams.
  * Maps to /api/proxy and forwards requests with proper CORS headers.
+ * Resolves relative URLs within .m3u8 files to absolute URLs so segment loading goes through the proxy correctly.
  */
 export async function onRequest(context) {
   const { request } = context;
@@ -48,6 +49,34 @@ export async function onRequest(context) {
     responseHeaders.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
     responseHeaders.set('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
     responseHeaders.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+
+    const contentType = upstreamResponse.headers.get('content-type') || '';
+    const isPlaylist = targetUrl.includes('.m3u8') || 
+                       contentType.toLowerCase().includes('mpegurl') || 
+                       contentType.toLowerCase().includes('x-mpegurl');
+
+    if (isPlaylist && upstreamResponse.ok) {
+      let text = await upstreamResponse.text();
+      const lines = text.split('\n');
+      const rewrittenLines = lines.map(line => {
+        const trimmed = line.trim();
+        if (trimmed.length === 0 || trimmed.startsWith('#')) {
+          return line;
+        }
+        try {
+          return new URL(trimmed, targetUrl).href;
+        } catch (e) {
+          return line;
+        }
+      });
+      text = rewrittenLines.join('\n');
+      
+      return new Response(text, {
+        status: upstreamResponse.status,
+        statusText: upstreamResponse.statusText,
+        headers: responseHeaders,
+      });
+    }
 
     return new Response(upstreamResponse.body, {
       status: upstreamResponse.status,
