@@ -88,4 +88,8 @@ const streamMap = {
     url: "https://stream.ottplus.live/live/ten_1_hd_abr/live/ten_1_hd_720/chunks.m3u8",
     poster: ""
   },
+  "ranapkz": {
+    url: "https://ranapkz.site/JOIN@RANAPK33/XT/X/play.m3u8?id=135352",
+    poster: ""
+  },
 };

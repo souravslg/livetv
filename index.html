@@ -29,11 +29,10 @@
 
     // Parse stream ID from query parameters
     const urlParams = new URLSearchParams(window.location.search);
-    const streamId = urlParams.get('id');
+    let streamId = urlParams.get('id');
 
     if (!streamId || !streamMap[streamId]) {
-      console.error('Invalid or missing stream ID');
-      return;
+      streamId = 'U2'; // Default to U2 stream if none specified
     }
 
     const streamInfo = streamMap[streamId];
