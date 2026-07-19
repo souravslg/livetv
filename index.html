@@ -46,6 +46,16 @@
     function initPlayer(currentProxy) {
       console.log('Initializing player with proxy:', currentProxy);
       
+      // Initialize Plyr first so it wraps the video element before Hls.js attaches
+      const player = new Plyr(video, {
+        controls: [
+          'play-large', 'play', 'progress', 'current-time', 
+          'mute', 'volume', 'captions', 'settings', 
+          'pip', 'airplay', 'fullscreen'
+        ],
+        autoplay: true
+      });
+
       if (Hls.isSupported()) {
         const hls = new Hls({
           enableWorker: true,
@@ -62,14 +72,6 @@
         hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          const player = new Plyr(video, {
-            controls: [
-              'play-large', 'play', 'progress', 'current-time', 
-              'mute', 'volume', 'captions', 'settings', 
-              'pip', 'airplay', 'fullscreen'
-            ],
-            autoplay: true
-          });
           video.play().catch(err => {
             console.log('Autoplay blocked, user interaction required:', err);
           });
@@ -84,6 +86,7 @@
                 if (currentProxy === localProxy) {
                   console.warn('Local proxy failed. Switching to public CORS proxy...');
                   hls.destroy();
+                  player.destroy();
                   initPlayer(fallbackProxy);
                 } else {
                   console.warn('Network error on fallback proxy. Attempting recovery...');
@@ -104,14 +107,6 @@
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         // Native HLS support (Safari/iOS)
         video.src = streamUrl;
-        const player = new Plyr(video, {
-          controls: [
-            'play-large', 'play', 'progress', 'current-time', 
-            'mute', 'volume', 'captions', 'settings', 
-            'pip', 'airplay', 'fullscreen'
-          ],
-          autoplay: true
-        });
       }
     }
 
