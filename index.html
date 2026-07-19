@@ -24,8 +24,6 @@
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const video = document.getElementById('player');
-    const localProxy = '/api/proxy?url=';
-    const fallbackProxy = 'https://corsproxy.io/?';
 
     // Parse stream ID from query parameters
     const urlParams = new URLSearchParams(window.location.search);
@@ -43,75 +41,54 @@
       streamUrl = decodeURIComponent(streamUrl);
     }
 
-    function initPlayer(currentProxy) {
-      console.log('Initializing player with proxy:', currentProxy);
-      
-      // Initialize Plyr first so it wraps the video element before Hls.js attaches
-      const player = new Plyr(video, {
-        controls: [
-          'play-large', 'play', 'progress', 'current-time', 
-          'mute', 'volume', 'captions', 'settings', 
-          'pip', 'airplay', 'fullscreen'
-        ],
-        autoplay: true
+    console.log('Playing stream URL directly:', streamUrl);
+
+    // Initialize Plyr player first so it wraps the video element
+    const player = new Plyr(video, {
+      controls: [
+        'play-large', 'play', 'progress', 'current-time', 
+        'mute', 'volume', 'captions', 'settings', 
+        'pip', 'airplay', 'fullscreen'
+      ],
+      autoplay: true
+    });
+
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true
       });
 
-      if (Hls.isSupported()) {
-        const hls = new Hls({
-          enableWorker: true,
-          lowLatencyMode: true,
-          xhrSetup: function(xhr, url) {
-            // Avoid double-proxying
-            if (!url.includes('/api/proxy?url=') && !url.includes('corsproxy.io/?')) {
-              xhr.open('GET', currentProxy + encodeURIComponent(url), true);
-            }
+      hls.loadSource(streamUrl);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        video.play().catch(err => {
+          console.log('Autoplay blocked, user interaction required:', err);
+        });
+      });
+
+      hls.on(Hls.Events.ERROR, function (event, data) {
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              console.warn('Network error, attempting recovery:', data);
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              console.warn('Media error, attempting recovery...');
+              hls.recoverMediaError();
+              break;
+            default:
+              hls.destroy();
+              break;
           }
-        });
-
-        hls.loadSource(currentProxy + encodeURIComponent(streamUrl));
-        hls.attachMedia(video);
-
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          video.play().catch(err => {
-            console.log('Autoplay blocked, user interaction required:', err);
-          });
-        });
-
-        // Error handling for robust playback recovery
-        hls.on(Hls.Events.ERROR, function (event, data) {
-          if (data.fatal) {
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                console.warn('Fatal network error occurred:', data);
-                if (currentProxy === localProxy) {
-                  console.warn('Local proxy failed. Switching to public CORS proxy...');
-                  hls.destroy();
-                  player.destroy();
-                  initPlayer(fallbackProxy);
-                } else {
-                  console.warn('Network error on fallback proxy. Attempting recovery...');
-                  hls.startLoad();
-                }
-                break;
-              case Hls.ErrorTypes.MEDIA_ERROR:
-                console.warn('Fatal media error. Attempting recovery...');
-                hls.recoverMediaError();
-                break;
-              default:
-                console.error('Fatal unrecoverable error. Destroying HLS instance...');
-                hls.destroy();
-                break;
-            }
-          }
-        });
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Native HLS support (Safari/iOS)
-        video.src = streamUrl;
-      }
+        }
+      });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Native HLS support (Safari/iOS)
+      video.src = streamUrl;
     }
-
-    // Start playback
-    initPlayer(localProxy);
   });
 </script>
 </body>

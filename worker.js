@@ -1,6 +1,6 @@
 /**
  * Unified Cloudflare Worker Script.
- * Serves the Player HTML page, handles the streamMap, and proxies HLS streams to bypass CORS.
+ * Serves the Player HTML page and handles the streamMap.
  * Copy and paste this script directly into the Cloudflare Workers Dashboard.
  */
 
@@ -103,112 +103,14 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // 1. Handle CORS Preflight
-    if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        status: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Range',
-        }
-      });
-    }
-
-    // 2. Serve premium.js stream mapping
+    // 1. Serve premium.js stream mapping
     if (url.pathname === '/premium.js') {
       return new Response(`const streamMap = ${JSON.stringify(streamMap, null, 2)};`, {
         headers: { 'Content-Type': 'application/javascript; charset=utf-8' }
       });
     }
 
-    // 3. Route to HLS Stream Proxy
-    if (url.pathname === '/api/proxy') {
-      const targetUrl = url.searchParams.get('url');
-      if (!targetUrl) {
-        return new Response(JSON.stringify({ error: 'Missing ?url= parameter' }), {
-          status: 400,
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        });
-      }
-
-      try {
-        const headers = new Headers();
-        // Copy safe headers from request
-        for (const [key, val] of request.headers.entries()) {
-          const lowerKey = key.toLowerCase();
-          if (
-            lowerKey !== 'host' &&
-            lowerKey !== 'referer' &&
-            lowerKey !== 'origin' &&
-            !lowerKey.startsWith('cf-') &&
-            !lowerKey.startsWith('x-forwarded-') &&
-            lowerKey !== 'x-real-ip'
-          ) {
-            headers.set(key, val);
-          }
-        }
-        headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-
-        const upstreamResponse = await fetch(targetUrl, { headers });
-
-        const responseHeaders = new Headers(upstreamResponse.headers);
-        responseHeaders.set('Access-Control-Allow-Origin', '*');
-        responseHeaders.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-        responseHeaders.set('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
-        responseHeaders.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-
-        const contentType = upstreamResponse.headers.get('content-type') || '';
-        const isPlaylist = targetUrl.includes('.m3u8') || 
-                           contentType.toLowerCase().includes('mpegurl') || 
-                           contentType.toLowerCase().includes('x-mpegurl');
-
-        const nullBodyStatuses = [101, 204, 205, 304];
-        const isNullBody = nullBodyStatuses.includes(upstreamResponse.status);
-
-        if (isPlaylist && upstreamResponse.ok && !isNullBody) {
-          let text = await upstreamResponse.text();
-          const lines = text.split('\n');
-          const rewrittenLines = lines.map(line => {
-            const trimmed = line.trim();
-            if (trimmed.length === 0 || trimmed.startsWith('#')) {
-              return line;
-            }
-            try {
-              return new URL(trimmed, targetUrl).href;
-            } catch (e) {
-              return line;
-            }
-          });
-          text = rewrittenLines.join('\n');
-          
-          return new Response(text, {
-            status: upstreamResponse.status,
-            statusText: upstreamResponse.statusText,
-            headers: responseHeaders,
-          });
-        }
-
-        return new Response(isNullBody ? null : upstreamResponse.body, {
-          status: upstreamResponse.status,
-          statusText: upstreamResponse.statusText,
-          headers: responseHeaders,
-        });
-      } catch (err) {
-        return new Response(JSON.stringify({ error: 'Proxy fetch failed', message: err.message }), {
-          status: 500,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-          }
-        });
-      }
-    }
-
-    // 4. Serve index.html by default
+    // 2. Serve index.html by default
     const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -235,8 +137,6 @@ export default {
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const video = document.getElementById('player');
-    const localProxy = '/api/proxy?url=';
-    const fallbackProxy = 'https://corsproxy.io/?';
 
     const urlParams = new URLSearchParams(window.location.search);
     let streamId = urlParams.get('id');
@@ -252,70 +152,52 @@ export default {
       streamUrl = decodeURIComponent(streamUrl);
     }
 
-    function initPlayer(currentProxy) {
-      console.log('Initializing player with proxy:', currentProxy);
-      
-      const player = new Plyr(video, {
-        controls: [
-          'play-large', 'play', 'progress', 'current-time', 
-          'mute', 'volume', 'captions', 'settings', 
-          'pip', 'airplay', 'fullscreen'
-        ],
-        autoplay: true
+    console.log('Playing stream URL directly:', streamUrl);
+
+    const player = new Plyr(video, {
+      controls: [
+        'play-large', 'play', 'progress', 'current-time', 
+        'mute', 'volume', 'captions', 'settings', 
+        'pip', 'airplay', 'fullscreen'
+      ],
+      autoplay: true
+    });
+
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true
       });
 
-      if (Hls.isSupported()) {
-        const hls = new Hls({
-          enableWorker: true,
-          lowLatencyMode: true,
-          xhrSetup: function(xhr, url) {
-            if (!url.includes('/api/proxy?url=') && !url.includes('corsproxy.io/?')) {
-              xhr.open('GET', currentProxy + encodeURIComponent(url), true);
-            }
+      hls.loadSource(streamUrl);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        video.play().catch(err => {
+          console.log('Autoplay blocked, user interaction required:', err);
+        });
+      });
+
+      hls.on(Hls.Events.ERROR, function (event, data) {
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              console.warn('Network error, attempting recovery:', data);
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              console.warn('Media error, attempting recovery...');
+              hls.recoverMediaError();
+              break;
+            default:
+              hls.destroy();
+              break;
           }
-        });
-
-        hls.loadSource(currentProxy + encodeURIComponent(streamUrl));
-        hls.attachMedia(video);
-
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          video.play().catch(err => {
-            console.log('Autoplay blocked, user interaction required:', err);
-          });
-        });
-
-        hls.on(Hls.Events.ERROR, function (event, data) {
-          if (data.fatal) {
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                console.warn('Fatal network error occurred:', data);
-                if (currentProxy === localProxy) {
-                  console.warn('Local proxy failed. Switching to public CORS proxy...');
-                  hls.destroy();
-                  player.destroy();
-                  initPlayer(fallbackProxy);
-                } else {
-                  console.warn('Network error on fallback proxy. Attempting recovery...');
-                  hls.startLoad();
-                }
-                break;
-              case Hls.ErrorTypes.MEDIA_ERROR:
-                console.warn('Fatal media error. Attempting recovery...');
-                hls.recoverMediaError();
-                break;
-              default:
-                console.error('Fatal unrecoverable error. Destroying HLS instance...');
-                hls.destroy();
-                break;
-            }
-          }
-        });
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = streamUrl;
-      }
+        }
+      });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = streamUrl;
     }
-
-    initPlayer(localProxy);
   });
 </script>
 </body>
