@@ -1,0 +1,66 @@
+/**
+ * Cloudflare Pages Function proxy for HLS streams.
+ * Maps to /api/proxy and forwards requests with proper CORS headers.
+ */
+export async function onRequest(context) {
+  const { request } = context;
+  const urlObj = new URL(request.url);
+  const targetUrl = urlObj.searchParams.get('url');
+
+  // Handle CORS preflight
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Range',
+      }
+    });
+  }
+
+  if (!targetUrl) {
+    return new Response(JSON.stringify({ error: 'Missing ?url= parameter' }), {
+      status: 400,
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  }
+
+  try {
+    const headers = new Headers();
+    headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    headers.set('Accept', '*/*');
+    headers.set('Accept-Language', 'en-US,en;q=0.9');
+
+    const range = request.headers.get('range');
+    if (range) {
+      headers.set('Range', range);
+    }
+
+    const upstreamResponse = await fetch(targetUrl, { headers });
+
+    // Copy response headers and apply CORS
+    const responseHeaders = new Headers(upstreamResponse.headers);
+    responseHeaders.set('Access-Control-Allow-Origin', '*');
+    responseHeaders.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    responseHeaders.set('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
+    responseHeaders.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+
+    return new Response(upstreamResponse.body, {
+      status: upstreamResponse.status,
+      statusText: upstreamResponse.statusText,
+      headers: responseHeaders,
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: 'Proxy fetch failed', message: err.message }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      }
+    });
+  }
+}
