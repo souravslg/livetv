@@ -160,65 +160,77 @@
       id="live-stream-player">
     </video>
   </main>
-
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const video = document.getElementById('live-stream-player');
-      
       const streamUrl = 'https://ranapkz.site/JOIN@RANAPK33/XT/X/play.m3u8?id=135352';
-      // Use our own Vercel serverless proxy at /api/proxy — same domain, no CORS issues.
-      const PROXY = '/api/proxy?url=';
+      
+      const localProxy = '/api/proxy?url=';
+      const fallbackProxy = 'https://corsproxy.io/?';
 
-      if (Hls.isSupported()) {
-        const hls = new Hls({
-          enableWorker: true,
-          lowLatencyMode: true,
-          // Route ALL requests (manifest + every .ts segment) through the CORS proxy.
-          // This is required because hls.js fetches resources cross-origin from vercel.app,
-          // and the stream server does not send Access-Control-Allow-Origin headers.
-          xhrSetup: function(xhr, url) {
-            // Avoid double-proxying if the URL is already going through the proxy
-            if (!url.includes('/api/proxy?url=')) {
-              xhr.open('GET', PROXY + encodeURIComponent(url), true);
-            }
-          }
-        });
-        hls.loadSource(PROXY + encodeURIComponent(streamUrl));
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          video.play().catch(err => {
-            console.log("Autoplay prevented. User interaction required:", err);
-          });
-        });
+      function initPlayer(currentProxy) {
+        console.log('Initializing player with proxy:', currentProxy);
         
-        // Error handling for robust playback recovery
-        hls.on(Hls.Events.ERROR, function (event, data) {
-          if (data.fatal) {
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                console.warn('Fatal network error. Attempting recovery...');
-                hls.startLoad();
-                break;
-              case Hls.ErrorTypes.MEDIA_ERROR:
-                console.warn('Fatal media error. Attempting recovery...');
-                hls.recoverMediaError();
-                break;
-              default:
-                console.error('Fatal unrecoverable error. Destroying HLS instance...');
-                hls.destroy();
-                break;
+        if (Hls.isSupported()) {
+          const hls = new Hls({
+            enableWorker: true,
+            lowLatencyMode: true,
+            xhrSetup: function(xhr, url) {
+              // Avoid double-proxying if the URL is already going through either proxy
+              if (!url.includes('/api/proxy?url=') && !url.includes('corsproxy.io/?')) {
+                xhr.open('GET', currentProxy + encodeURIComponent(url), true);
+              }
             }
-          }
-        });
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Native HLS support (Safari/iOS) — these browsers handle CORS differently
-        video.src = streamUrl;
-        video.addEventListener('loadedmetadata', () => {
-          video.play().catch(err => {
-            console.log("Autoplay prevented. User interaction required:", err);
           });
-        });
+
+          hls.loadSource(currentProxy + encodeURIComponent(streamUrl));
+          hls.attachMedia(video);
+
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            video.play().catch(err => {
+              console.log("Autoplay prevented. User interaction required:", err);
+            });
+          });
+          
+          // Error handling for robust playback recovery
+          hls.on(Hls.Events.ERROR, function (event, data) {
+            if (data.fatal) {
+              switch (data.type) {
+                case Hls.ErrorTypes.NETWORK_ERROR:
+                  console.warn('Fatal network error occurred:', data);
+                  if (currentProxy === localProxy) {
+                    console.warn('Local proxy failed/unsupported on Cloudflare. Switching to public CORS proxy...');
+                    hls.destroy();
+                    initPlayer(fallbackProxy);
+                  } else {
+                    console.warn('Network error on fallback proxy. Attempting recovery...');
+                    hls.startLoad();
+                  }
+                  break;
+                case Hls.ErrorTypes.MEDIA_ERROR:
+                  console.warn('Fatal media error. Attempting recovery...');
+                  hls.recoverMediaError();
+                  break;
+                default:
+                  console.error('Fatal unrecoverable error. Destroying HLS instance...');
+                  hls.destroy();
+                  break;
+              }
+            }
+          });
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          // Native HLS support (Safari/iOS)
+          video.src = streamUrl;
+          video.addEventListener('loadedmetadata', () => {
+            video.play().catch(err => {
+              console.log("Autoplay prevented. User interaction required:", err);
+            });
+          });
+        }
       }
+
+      // Start with local proxy, automatically fallback if it fails
+      initPlayer(localProxy);
     });
   </script>
 </body>
