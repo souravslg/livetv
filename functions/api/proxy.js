@@ -32,14 +32,23 @@ export async function onRequest(context) {
 
   try {
     const headers = new Headers();
-    headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    headers.set('Accept', '*/*');
-    headers.set('Accept-Language', 'en-US,en;q=0.9');
-
-    const range = request.headers.get('range');
-    if (range) {
-      headers.set('Range', range);
+    // Copy incoming headers except host, referer, origin, and Cloudflare internal headers
+    for (const [key, val] of request.headers.entries()) {
+      const lowerKey = key.toLowerCase();
+      if (
+        lowerKey !== 'host' &&
+        lowerKey !== 'referer' &&
+        lowerKey !== 'origin' &&
+        !lowerKey.startsWith('cf-') &&
+        !lowerKey.startsWith('x-forwarded-') &&
+        lowerKey !== 'x-real-ip'
+      ) {
+        headers.set(key, val);
+      }
     }
+    
+    // Set a standard browser User-Agent
+    headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
     const upstreamResponse = await fetch(targetUrl, { headers });
 
@@ -55,7 +64,11 @@ export async function onRequest(context) {
                        contentType.toLowerCase().includes('mpegurl') || 
                        contentType.toLowerCase().includes('x-mpegurl');
 
-    if (isPlaylist && upstreamResponse.ok) {
+    // Cloudflare Workers throws an error if a body is returned with certain status codes (like 304)
+    const nullBodyStatuses = [101, 204, 205, 304];
+    const isNullBody = nullBodyStatuses.includes(upstreamResponse.status);
+
+    if (isPlaylist && upstreamResponse.ok && !isNullBody) {
       let text = await upstreamResponse.text();
       const lines = text.split('\n');
       const rewrittenLines = lines.map(line => {
@@ -78,7 +91,7 @@ export async function onRequest(context) {
       });
     }
 
-    return new Response(upstreamResponse.body, {
+    return new Response(isNullBody ? null : upstreamResponse.body, {
       status: upstreamResponse.status,
       statusText: upstreamResponse.statusText,
       headers: responseHeaders,

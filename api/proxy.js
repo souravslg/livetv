@@ -19,15 +19,23 @@ export default async function handler(req, res) {
   }
 
   try {
-    const headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': '*/*',
-      'Accept-Language': 'en-US,en;q=0.9',
-    };
-
-    if (req.headers['range']) {
-      headers['Range'] = req.headers['range'];
+    const headers = {};
+    // Forward client headers to the upstream server, except for security/identity headers
+    for (const [key, val] of Object.entries(req.headers)) {
+      const lowerKey = key.toLowerCase();
+      if (
+        lowerKey !== 'host' &&
+        lowerKey !== 'referer' &&
+        lowerKey !== 'origin' &&
+        !lowerKey.startsWith('x-forwarded-') &&
+        lowerKey !== 'x-real-ip'
+      ) {
+        headers[key] = val;
+      }
     }
+    
+    // Set a standard browser User-Agent
+    headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
     const upstream = await fetch(url, { headers });
 
