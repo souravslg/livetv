@@ -115,7 +115,7 @@ export default {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Telegram-cricXfootball</title>
+  <title>IPTV INDIA- live streaming</title>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
   <meta name="referrer" content="no-referrer"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.6.12/dist/plyr.css"/>
