@@ -141,15 +141,11 @@ export default {
     const urlParams = new URLSearchParams(window.location.search);
     let streamId = urlParams.get('id');
 
-    if (!streamId || !streamMap[streamId]) {
-      streamId = 'U2';
-    }
-
-    const streamInfo = streamMap[streamId];
-    let streamUrl = streamInfo.url;
-    
-    if (streamUrl.startsWith('http%3A%2F%2F') || streamUrl.startsWith('https%3A%2F%2F')) {
-      streamUrl = decodeURIComponent(streamUrl);
+    let streamUrl;
+    if (streamId && streamMap[streamId]) {
+      streamUrl = streamMap[streamId].url;
+    } else {
+      streamUrl = `https://vodtest.vercel.app/api/api.php?id=${streamId || '475070'}`;
     }
 
     console.log('Playing stream URL directly:', streamUrl);
