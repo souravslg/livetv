@@ -32,23 +32,14 @@ export async function onRequest(context) {
 
   try {
     const headers = new Headers();
-    // Copy incoming headers except host, referer, origin, and Cloudflare internal headers
-    for (const [key, val] of request.headers.entries()) {
-      const lowerKey = key.toLowerCase();
-      if (
-        lowerKey !== 'host' &&
-        lowerKey !== 'referer' &&
-        lowerKey !== 'origin' &&
-        !lowerKey.startsWith('cf-') &&
-        !lowerKey.startsWith('x-forwarded-') &&
-        lowerKey !== 'x-real-ip'
-      ) {
-        headers.set(key, val);
-      }
-    }
-    
     // Set a standard browser User-Agent
     headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    
+    // Only forward the Range header if requested by client (essential for media streaming/seeking)
+    const range = request.headers.get('range');
+    if (range) {
+      headers.set('Range', range);
+    }
 
     const upstreamResponse = await fetch(targetUrl, { headers });
 

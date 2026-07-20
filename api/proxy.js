@@ -20,22 +20,13 @@ export default async function handler(req, res) {
 
   try {
     const headers = {};
-    // Forward client headers to the upstream server, except for security/identity headers
-    for (const [key, val] of Object.entries(req.headers)) {
-      const lowerKey = key.toLowerCase();
-      if (
-        lowerKey !== 'host' &&
-        lowerKey !== 'referer' &&
-        lowerKey !== 'origin' &&
-        !lowerKey.startsWith('x-forwarded-') &&
-        lowerKey !== 'x-real-ip'
-      ) {
-        headers[key] = val;
-      }
-    }
-    
     // Set a standard browser User-Agent
     headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    
+    // Only forward the Range header if requested by client (essential for media streaming/seeking)
+    if (req.headers.range) {
+      headers['range'] = req.headers.range;
+    }
 
     const upstream = await fetch(url, { headers });
 
@@ -49,6 +40,9 @@ export default async function handler(req, res) {
     const contentType = upstream.headers.get('content-type') || 'application/octet-stream';
 
     res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range');
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
 
