@@ -148,6 +148,10 @@ export default {
       streamUrl = `https://vodtest.vercel.app/api/api.php?id=${streamId || '475070'}`;
     }
 
+    if (streamUrl.includes('vodtest.vercel.app')) {
+      streamUrl = `/api/proxy?url=${encodeURIComponent(streamUrl)}`;
+    }
+
     console.log('Playing stream URL directly:', streamUrl);
 
     const player = new Plyr(video, {

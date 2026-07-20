@@ -36,6 +36,10 @@
       streamUrl = `https://vodtest.vercel.app/api/api.php?id=${streamId || '475070'}`;
     }
 
+    if (streamUrl.includes('vodtest.vercel.app')) {
+      streamUrl = `/api/proxy?url=${encodeURIComponent(streamUrl)}`;
+    }
+
     console.log('Playing stream URL directly:', streamUrl);
 
     // Initialize Plyr player first so it wraps the video element

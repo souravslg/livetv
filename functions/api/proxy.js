@@ -77,7 +77,8 @@ export async function onRequest(context) {
           return line;
         }
         try {
-          return new URL(trimmed, targetUrl).href;
+          const absoluteUrl = new URL(trimmed, targetUrl).href;
+          return `${urlObj.origin}${urlObj.pathname}?url=${encodeURIComponent(absoluteUrl)}`;
         } catch (e) {
           return line;
         }
