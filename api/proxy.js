@@ -65,7 +65,7 @@ export default async function handler(req, res) {
           return line;
         }
         try {
-          const absoluteUrl = new URL(trimmed, url).href;
+          const absoluteUrl = new URL(trimmed, upstream.url).href;
           const origin = `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}`;
           return `${origin}/api/proxy?url=${encodeURIComponent(absoluteUrl)}`;
         } catch (e) {
