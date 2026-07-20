@@ -139,13 +139,14 @@ export default {
     const video = document.getElementById('player');
 
     const urlParams = new URLSearchParams(window.location.search);
-    let streamId = urlParams.get('id');
-
-    let streamUrl;
-    if (streamId && streamMap[streamId]) {
-      streamUrl = streamMap[streamId].url;
-    } else {
-      streamUrl = `https://vodtest.vercel.app/api/api.php?id=${streamId || '475070'}`;
+    const streamId = urlParams.get('id');
+    let streamUrl = urlParams.get('url');
+    if (!streamUrl) {
+      if (streamId && streamMap[streamId]) {
+        streamUrl = streamMap[streamId].url;
+      } else {
+        streamUrl = 'https://starsportshindiii.pages.dev/index.m3u8';
+      }
     }
 
     if (streamUrl.includes('vodtest.vercel.app')) {
