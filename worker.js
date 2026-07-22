@@ -438,7 +438,11 @@ export default {
   let shakaUiControl = null;
 
   const m3uUrl = 'https://admin.iptvindia.co.in/api/get?username=home3&password=home3';
-  const proxyPrefix = '/api/proxy?url=';
+  let proxyPrefix = '/api/proxy?url=';
+
+  if (window.location.protocol === 'file:' || window.location.hostname === '') {
+    proxyPrefix = 'https://corsproxy.io/?';
+  }
 
   document.addEventListener('DOMContentLoaded', async () => {
     // 1. Initialize Shaka Player (DRM Dash playback)
@@ -480,10 +484,22 @@ export default {
 
   async function loadPlaylist() {
     try {
-      const fetchUrl = \`\${proxyPrefix}\${encodeURIComponent(m3uUrl)}\`;
-      const response = await fetch(fetchUrl);
+      let fetchUrl = `${proxyPrefix}${encodeURIComponent(m3uUrl)}`;
+      let response;
+      try {
+        response = await fetch(fetchUrl);
+        if (!response.ok && proxyPrefix !== 'https://corsproxy.io/?') {
+          throw new Error('Fallback trigger');
+        }
+      } catch (err) {
+        console.warn('Proxy failed, falling back to corsproxy.io...');
+        proxyPrefix = 'https://corsproxy.io/?';
+        fetchUrl = `${proxyPrefix}${encodeURIComponent(m3uUrl)}`;
+        response = await fetch(fetchUrl);
+      }
+
       if (!response.ok) {
-        throw new Error(\`Failed to fetch playlist: \${response.statusText}\`);
+        throw new Error(`Failed to fetch playlist: ${response.statusText}`);
       }
       const rawText = await response.text();
       parseM3u(rawText);
