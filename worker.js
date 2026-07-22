@@ -1,208 +1,741 @@
 /**
  * Unified Cloudflare Worker Script.
- * Serves the Player HTML page and handles the streamMap.
+ * Serves the Player HTML page.
  * Copy and paste this script directly into the Cloudflare Workers Dashboard.
  */
-
-const streamMap = {
-  "PSL": {
-    url: "https://pslurdu.bigbaat.app/out/v1/0ef369b90c7b4025b76621e46ee5fb70/index.m3u8",
-    poster: "#"
-  },
-  "S": {
-    url: "https%3A%2F%2Fstream.mux.com%2FKoxxjUGynnOrRH0054JSB702dX8pn4yAHUm6t02AowArnk.m3u8%3Ftoken%3DeyJhbGciOiJSUzI1NiJ9.eyJraWQiOiJGMDFHc2doUkVIM0RjZEowMGdZaDRKUHg3cW9SM2pDVENGaGR6YUtrT2lNdGMiLCJzdWIiOiJLb3h4alVHeW5uT3JSSDAwNTRKU0I3MDJkWDhwbjR5QUhVbTZ0MDJBb3dBcm5rIiwiYXVkIjoidiIsImV4cCI6MTc4NDI4NjY0OH0.N9f2_VL8MTL7Lce4gcxRp4kTo-rC3YrAOSnNqMObTZzxC06Mbu5Z9GMz8VXCrMtHUMtchGkVGlBvcqOBz9BJC8d92393aCrerLsh_iMwYq1T9qtmo9sk2e1QuWOHwMx_THcmaVWie1LJuNx1wftxjob8q0SJtuXl6MviY95wt8hvacirKL-z9i7AbsL_4nwrC4M-ewDKOw0I9X7H8m2eK91O1YFlidpZSZqFgLcfe82yH2Ey2fYL-lIJgf5LbFq2jtAIElAP5Uu4arbuO7JF2cx9yr5SkaCixHUZI7p6Nwu122CS2jnVwxQJ8G9LcO6Aozl8cx-TxmbKF11OfbPOQA&autoplay=1&controls=auto&theme=default&buffer=30&quality=1&speed=1&pip=1&fullscreen=1&no_download=1&width=responsive&aspect=16%3A9",
-    poster: ""
-  },
-  "PSL2": {
-    url: "https://psl.bigbaat.app/out/v1/f342445c31dd475bbf30c7304dbad14f/index.m3u8",
-    poster: ""
-  },
-  "S2": {
-    url: "https://amg01269-amg01269c1-sportstribal-emea-5204.playouts.now.amagi.tv/playlist/amg01269-willowtvfast-willowplus-sportstribalemea/playlist.m3u8",
-    poster: "#"
-  },
-  "E": {
-    url: "https://dai-partner.fancode.com/primary/142976_english_hls_32abf1ee6040415_1ta-di_h264/index.m3u8",
-    poster: ""
-  },
-  "H": {
-    url: "https://fncd.kuvuslov.cymru/mumbai/143396_english_hls_308563297d37105_1ta-di_h264/index.m3u8",
-    poster: ""
-  },
-  "P": {
-    url: "https://dai-partner.fancode.com/primary/140518_english_hls_9481b78c2323004_1ta-di_h264/index.m3u8",
-    poster: ""
-  },
-  "C": {
-    url: "https://dai-partner.fancode.com/primary/140518_english_hls_9481b78c2323004_1ta-di_h264/index.m3u8",
-    poster: ""
-  },
-  "F2": {
-    url: "https://hugh.cdn.rumble.cloud/live/t34ch9px/slot-155/r0gr-9joe/chunklist.m3u8",
-    poster: ""
-  },
-  "U8": {
-    url: "https://hugh.cdn.rumble.cloud/live/v0xi25uh/slot-85/m8uy-e0k3_1080p/chunklist_DVR.m3u8",
-    poster: ""
-  },
-  "F1": {
-    url: "https://fuck-you.kasin-tv.com/fc/proxy.php/https://in-mc-pdlive.fancode.com/mumbai/139471_english_hls_bcb585673323107_1ta-di_h264/index.m3u8",
-    poster: ""
-  },
-  "U7": {
-    url: "https://fox.newpersonalities.workers.dev/",
-    poster: ""
-  },
-  "S3": {
-    url: "https://stream.mux.com/KoxxjUGynnOrRH0054JSB702dX8pn4yAHUm6t02AowArnk.m3u8?token=eyJhbGciOiJSUzI1NiJ9.eyJraWQiOiJGMDFHc2doUkVIM0RjZEowMGdZaDRKUHg3cW9SM2pDVENGaGR6YUtrT2lNdGMiLCJzdWIiOiJLb3h4alVHeW5uT3JSSDAwNTRKU0I3MDJkWDhwbjR5QUhVbTZ0MDJBb3dBcm5rIiwiYXVkIjoidiIsImV4cCI6MTc4NDI4NjY0OH0.N9f2_VL8MTL7Lce4gcxRp4kTo-rC3YrAOSnNqMObTZzxC06Mbu5Z9GMz8VXCrMtHUMtchGkVGlBvcqOBz9BJC8d92393aCrerLsh_iMwYq1T9qtmo9sk2e1QuWOHwMx_THcmaVWie1LJuNx1wftxjob8q0SJtuXl6MviY95wt8hvacirKL-z9i7AbsL_4nwrC4M-ewDKOw0I9X7H8m2eK91O1YFlidpZSZqFgLcfe82yH2Ey2fYL-lIJgf5LbFq2jtAIElAP5Uu4arbuO7JF2cx9yr5SkaCixHUZI7p6Nwu122CS2jnVwxQJ8G9LcO6Aozl8cx-TxmbKF11OfbPOQA&autoplay=1&controls=auto&theme=default&buffer=30&quality=1&speed=1&pip=1&fullscreen=1&no_download=1&width=responsive&aspect=16:9",
-    poster: ""
-  },
-  "U5": {
-    url: "rda2lIOMpzK9DlSwKzXK6o2TC45fLlTFYdQwySsTP3efVWKfsuHlYXolCAxxg15URqOE5B&uid=YZ128Qk7yQvbLqXhSrt1Msl25aNuAldI&sid=XdbbfqKeCgqAfwc3K2tcDx4FaLZlzmyI&pid=YpZkPe8xrIefIbd2spJu6CNDmV5ahFkG&ref=tvgo.americatv.com.pe&ext_pb=0&es=pe-p5-p-e-cl1-clrp.cdn.mdstrm.com&ote=1783021451469&ot=fz8hNvpBKoD_fuOl5YrtEw&proto=https&pz=us",
-    poster: ""
-  },
-  "U4": {
-    url: "https://dfr80qz435crc.cloudfront.net/MNOP/Amagi/Caze/Caze_TV_BR/Caze_TV.m3u8",
-    poster: ""
-  },
-  "U6": {
-    url: "https://foxdtc-video.akamaized.net/ZXhwPTE3ODQ1NjQxODc7YWNsPS8qO3dzaWQ9ZThkZWM0NWJhZDNjN2Y3ODNlYWMxNjYxNDk2NjQyOTVfZm94ZHRjX2FuZHJvaWR0dl9lbi1VUztobWFjPW41QjV5bE90dDdFVkhTei9aVEU4QmlxcjFxWmNmTEJWN1VXK3BLSkhsMWs9/live/uhd-1-b-uw2/index.m3u8",
-    poster: ""
-  },
-  "S4": {
-    url: "https%3A%2F%2Fstream.mux.com%2FKoxxjUGynnOrRH0054JSB702dX8pn4yAHUm6t02AowArnk.m3u8%3Ftoken%3DeyJhbGciOiJSUzI1NiJ9.eyJraWQiOiJGMDFHc2doUkVIM0RjZEowMGdZaDRKUHg3cW9SM2pDVENGaGR6YUtrT2lNdGMiLCJzdWIiOiJLb3h4alVHeW5uT3JSSDAwNTRKU0I3MDJkWDhwbjR5QUhVbTZ0MDJBb3dBcm5rIiwiYXVkIjoidiIsImV4cCI6MTc4NDI4NjY0OH0.N9f2_VL8MTL7Lce4gcxRp4kTo-rC3YrAOSnNqMObTZzxC06Mbu5Z9GMz8VXCrMtHUMtchGkVGlBvcqOBz9BJC8d92393aCrerLsh_iMwYq1T9qtmo9sk2e1QuWOHwMx_THcmaVWie1LJuNx1wftxjob8q0SJtuXl6MviY95wt8hvacirKL-z9i7AbsL_4nwrC4M-ewDKOw0I9X7H8m2eK91O1YFlidpZSZqFgLcfe82yH2Ey2fYL-lIJgf5LbFq2jtAIElAP5Uu4arbuO7JF2cx9yr5SkaCixHUZI7p6Nwu122CS2jnVwxQJ8G9LcO6Aozl8cx-TxmbKF11OfbPOQA&autoplay=1&controls=auto&theme=default&buffer=30&quality=1&speed=1&pip=1&fullscreen=1&no_download=1&width=responsive&aspect=16%3A9",
-    poster: ""
-  },
-  "U": {
-    url: "https://amg00716-globo-amg00716c1-tcl-br-9495.playouts.now.amagi.tv/playlist.m3u8",
-    poster: ""
-  },
-  "U3": {
-    url: "https://cua.atharican.shop/menze1.m3u8",
-    poster: ""
-  },
-  "U1": {
-    url: "https://live05.miekgo.app/live/78905744.m3u8",
-    poster: ""
-  },
-  "U2": {
-    url: "https://foxdtc-video.akamaized.net/ZXhwPTE3ODQ1Njk4MTc7YWNsPS8qO3dzaWQ9ZGMxZjljNTI3YmNiYWM3MTY5ZDA4ZDgyNjBkMDg2ZjNfZm94ZHRjX3dlYl9lbi1VUztobWFjPVBvcFdWWUpTMERKUjNMTEVZOWZDOVFFVDhKbklzSFpBaWRSMnBVaXRtVTA9/live/tx001-ue2/index.m3u8",
-    poster: "#"
-  },
-  "S1": {
-    url: "https://stream.ottplus.live/live/ten_1_hd_abr/live/ten_1_hd_720/chunks.m3u8",
-    poster: ""
-  },
-  "ranapkz": {
-    url: "https://ranapkz.site/JOIN@RANAPK33/XT/X/play.m3u8?id=135352",
-    poster: ""
-  }
-};
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // 1. Serve premium.js stream mapping
-    if (url.pathname === '/premium.js') {
-      return new Response(`const streamMap = ${JSON.stringify(streamMap, null, 2)};`, {
-        headers: { 'Content-Type': 'application/javascript; charset=utf-8' }
-      });
-    }
-
-    // 2. Serve index.html by default
+    // Serve the index.html by default
     const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>IPTV INDIA- live streaming</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <title>IPTV INDIA - Premium Live TV</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <meta name="referrer" content="no-referrer"/>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.6.12/dist/plyr.css"/>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Shaka Player for DASH / ClearKey -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/controls.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.ui.js"></script>
+  
+  <!-- Hls.js for HLS -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.1.4/dist/hls.min.js"></script>
+
   <style>
-    body { background:#000; margin:0; overflow:hidden; }
-    html, body { height:100%; }
-    video { width:100%; height:100%; }
-    .plyr { height:100%; }
+    :root {
+      --bg-color: #0b0c10;
+      --card-bg: #1f2833;
+      --card-hover: #2c3540;
+      --accent-color: #00e676;
+      --accent-hover: #00c853;
+      --text-main: #ffffff;
+      --text-muted: #c5c6c7;
+      --sidebar-width: 380px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+    }
+
+    /* Main Container */
+    .app-container {
+      display: flex;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Left Panel: Video Player & Info */
+    .player-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #000;
+      position: relative;
+    }
+
+    .video-wrapper {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      outline: none;
+    }
+
+    .shaka-video-container {
+      width: 100%;
+      height: 100%;
+    }
+
+    .channel-meta {
+      background: linear-gradient(180deg, rgba(31,40,51,0.8) 0%, rgba(11,12,16,1) 100%);
+      padding: 20px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      backdrop-filter: blur(10px);
+    }
+
+    .channel-title-row {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .channel-logo-large {
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
+      object-fit: contain;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 4px;
+    }
+
+    .channel-details h2 {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .channel-details p {
+      font-size: 0.9rem;
+      color: var(--accent-color);
+      margin-top: 3px;
+      font-weight: 500;
+    }
+
+    /* Right Panel: Sidebar with Categories & Cards */
+    .sidebar {
+      width: var(--sidebar-width);
+      background-color: #12161f;
+      border-left: 1px solid rgba(255,255,255,0.05);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    /* Sidebar Header */
+    .sidebar-header {
+      padding: 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .sidebar-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sidebar-title span {
+      color: var(--accent-color);
+    }
+
+    .search-box {
+      position: relative;
+    }
+
+    .search-box input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 10px 15px;
+      color: #fff;
+      font-size: 0.9rem;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .search-box input:focus {
+      border-color: var(--accent-color);
+      box-shadow: 0 0 10px rgba(0, 230, 118, 0.2);
+    }
+
+    /* Categories Tabs */
+    .categories-bar {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 0 20px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      scrollbar-width: none;
+    }
+
+    .categories-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .category-btn {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.3s ease;
+      font-weight: 500;
+    }
+
+    .category-btn:hover {
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+    }
+
+    .category-btn.active {
+      background: var(--accent-color);
+      border-color: var(--accent-color);
+      color: #0b0c10;
+      font-weight: 600;
+      box-shadow: 0 0 10px rgba(0, 230, 118, 0.3);
+    }
+
+    /* Channels List Scroll Area */
+    .channels-list-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px 20px;
+    }
+
+    .channels-list-container::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .channels-list-container::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+    }
+
+    .channels-list-container::-webkit-scrollbar-thumb:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    /* Channel Cards Grid */
+    .channels-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .channel-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .channel-card:hover {
+      background: var(--card-hover);
+      border-color: rgba(255, 255, 255, 0.1);
+      transform: translateX(3px);
+    }
+
+    .channel-card.active {
+      background: rgba(0, 230, 118, 0.08);
+      border-color: var(--accent-color);
+    }
+
+    .channel-card-logo {
+      width: 45px;
+      height: 45px;
+      border-radius: 6px;
+      object-fit: contain;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.05);
+      padding: 2px;
+      transition: all 0.3s;
+    }
+
+    .channel-card.active .channel-card-logo {
+      border-color: var(--accent-color);
+      background: rgba(255,255,255,0.1);
+    }
+
+    .channel-card-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .channel-card-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .channel-card-group {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .live-badge {
+      background: #ff3838;
+      color: #fff;
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    /* Loading placeholder / states */
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 150px;
+      color: var(--text-muted);
+      gap: 12px;
+      font-size: 0.9rem;
+    }
+
+    .spinner {
+      width: 30px;
+      height: 30px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: var(--accent-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 992px) {
+      body {
+        flex-direction: column;
+      }
+      .app-container {
+        flex-direction: column;
+      }
+      .player-section {
+        flex: none;
+        height: 40vh;
+      }
+      .sidebar {
+        width: 100%;
+        flex: 1;
+        height: auto;
+      }
+    }
   </style>
 </head>
 <body>
 
-<video id="player" autoplay muted controls crossorigin playsinline></video>
+<div class="app-container">
+  <!-- Left Column: Stream Player and Metadata -->
+  <section class="player-section">
+    <div class="video-wrapper">
+      <div id="shaka-container" class="shaka-video-container">
+        <video id="player" autoplay muted controls crossorigin playsinline></video>
+      </div>
+    </div>
+    
+    <div class="channel-meta">
+      <div class="channel-title-row">
+        <img id="current-logo" class="channel-logo-large" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff'%3E%3Cpath d='M21 6h-7.59l3.29-3.29L16 2l-4 4-4-4-.71.71L10.59 6H3c-1.1 0-2 .89-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.11-.9-2-2-2zm0 14H3V8h18v12zM9 10v8l7-4z'/%3E%3C/svg%3E" alt="Channel Logo">
+        <div class="channel-details">
+          <h2 id="current-title">Select a Channel</h2>
+          <p id="current-category">Ready to stream</p>
+        </div>
+      </div>
+    </div>
+  </section>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1.1.4/dist/hls.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/plyr@3.6.12/dist/plyr.min.js"></script>
-<script src="premium.js"></script>
-  
+  <!-- Right Column: Channels Panel -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
+          <polyline points="17 2 12 7 7 2"></polyline>
+        </svg>
+        <span>IPTV</span> INDIA LIVE
+      </div>
+      
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="Search channels...">
+      </div>
+    </div>
+
+    <!-- Scrollable Categories tabs -->
+    <div class="categories-bar" id="categories-container">
+      <button class="category-btn active" data-category="ALL">All</button>
+    </div>
+
+    <!-- Scrollable Channels grid -->
+    <div class="channels-list-container">
+      <div class="channels-grid" id="channels-grid">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Loading playlist...</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const video = document.getElementById('player');
+  let allChannels = [];
+  let categories = ['ALL'];
+  let activeCategory = 'ALL';
+  let searchQuery = '';
+  let activeChannel = null;
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const streamId = urlParams.get('id');
-    let streamUrl = urlParams.get('url');
-    if (!streamUrl) {
-      if (streamId && streamMap[streamId]) {
-        streamUrl = streamMap[streamId].url;
-      } else {
-        streamUrl = 'https://starsportshindiii.pages.dev/index.m3u8';
+  // Player instances
+  let hlsInstance = null;
+  let shakaPlayer = null;
+  let shakaUiControl = null;
+
+  const m3uUrl = 'https://admin.iptvindia.co.in/api/get?username=home3&password=home3';
+  const proxyPrefix = '/api/proxy?url=';
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Initialize Shaka Player (DRM Dash playback)
+    shaka.polyfill.installAll();
+    if (shaka.Player.isBrowserSupported()) {
+      initShaka();
+    } else {
+      console.warn('Shaka player is not supported on this browser.');
+    }
+
+    // 2. Fetch and Load playlist
+    await loadPlaylist();
+
+    // 3. Setup event listeners
+    document.getElementById('search-input').addEventListener('input', (e) => {
+      searchQuery = e.target.value.toLowerCase();
+      renderChannels();
+    });
+  });
+
+  function initShaka() {
+    const video = document.getElementById('player');
+    const container = document.getElementById('shaka-container');
+    shakaPlayer = new shaka.Player(video);
+    
+    // Initialize Shaka UI Controls
+    shakaUiControl = new shaka.ui.Overlay(shakaPlayer, container, video);
+    
+    // Customize UI config
+    const uiConfig = {
+      'controlPanelElements': ['play_pause', 'time_and_duration', 'spacer', 'mute', 'volume', 'fullscreen', 'overflow_menu']
+    };
+    shakaUiControl.configure(uiConfig);
+
+    shakaPlayer.addEventListener('error', (event) => {
+      console.error('Shaka Player Error:', event.detail);
+    });
+  }
+
+  async function loadPlaylist() {
+    try {
+      const fetchUrl = \`\${proxyPrefix}\${encodeURIComponent(m3uUrl)}\`;
+      const response = await fetch(fetchUrl);
+      if (!response.ok) {
+        throw new Error(\`Failed to fetch playlist: \${response.statusText}\`);
+      }
+      const rawText = await response.text();
+      parseM3u(rawText);
+    } catch (e) {
+      console.error('Error loading M3U playlist:', e);
+      document.getElementById('channels-grid').innerHTML = \`
+        <div class="loading-state" style="color: #ff3838;">
+          <p>Failed to load playlist. Please reload the page.</p>
+        </div>
+      \`;
+    }
+  }
+
+  function parseM3u(data) {
+    const lines = data.split('\\n');
+    let currentChannel = null;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+
+      if (line.startsWith('#EXTINF:')) {
+        currentChannel = {
+          id: '',
+          name: '',
+          logo: '',
+          group: 'GENERAL',
+          url: '',
+          licenseKey: '',
+          manifestType: 'hls'
+        };
+
+        // Parse attributes
+        const tvgIdMatch = line.match(/tvg-id="([^"]+)"/);
+        const nameMatch = line.match(/tvg-name="([^"]+)"/);
+        const logoMatch = line.match(/tvg-logo="([^"]+)"/);
+        const groupMatch = line.match(/group-title="([^"]+)"/);
+
+        // Fallback display name from comma
+        const commaIndex = line.lastIndexOf(',');
+        const displayName = commaIndex !== -1 ? line.substring(commaIndex + 1).trim() : '';
+
+        currentChannel.id = tvgIdMatch ? tvgIdMatch[1] : (nameMatch ? nameMatch[1] : Math.random().toString(36).substr(2, 9));
+        currentChannel.name = displayName || (nameMatch ? nameMatch[1] : 'Unknown Channel');
+        currentChannel.logo = logoMatch ? logoMatch[1] : '';
+        currentChannel.group = groupMatch ? groupMatch[1].trim() : 'GENERAL';
+      } 
+      else if (line.startsWith('#KODIPROP:')) {
+        if (!currentChannel) continue;
+        if (line.includes('license_key=')) {
+          currentChannel.licenseKey = line.split('license_key=')[1].trim();
+        } else if (line.includes('manifest_type=')) {
+          currentChannel.manifestType = line.split('manifest_type=')[1].trim().toLowerCase();
+        }
+      } 
+      else if (line.length > 0 && !line.startsWith('#')) {
+        if (currentChannel) {
+          currentChannel.url = line;
+          allChannels.push(currentChannel);
+          
+          // Add unique category
+          if (currentChannel.group && !categories.includes(currentChannel.group)) {
+            categories.push(currentChannel.group);
+          }
+          currentChannel = null;
+        }
       }
     }
 
-    if (streamUrl.includes('vodtest.vercel.app')) {
-      streamUrl = `/api/proxy?url=${encodeURIComponent(streamUrl)}`;
+    renderCategories();
+    renderChannels();
+    
+    // Play first channel automatically if available
+    if (allChannels.length > 0) {
+      selectChannel(allChannels[0]);
     }
+  }
 
-    console.log('Playing stream URL directly:', streamUrl);
+  function renderCategories() {
+    const container = document.getElementById('categories-container');
+    container.innerHTML = '';
+    
+    categories.forEach(cat => {
+      const btn = document.createElement('button');
+      btn.className = \`category-btn \${activeCategory === cat ? 'active' : ''}\`;
+      btn.textContent = cat;
+      btn.addEventListener('click', () => {
+        activeCategory = cat;
+        // Update active class
+        document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderChannels();
+      });
+      container.appendChild(btn);
+    });
+  }
 
-    const player = new Plyr(video, {
-      controls: [
-        'play-large', 'play', 'progress', 'current-time', 
-        'mute', 'volume', 'captions', 'settings', 
-        'pip', 'airplay', 'fullscreen'
-      ],
-      autoplay: true
+  function renderChannels() {
+    const grid = document.getElementById('channels-grid');
+    grid.innerHTML = '';
+
+    const filtered = allChannels.filter(ch => {
+      const matchesCategory = activeCategory === 'ALL' || ch.group === activeCategory;
+      const matchesSearch = ch.name.toLowerCase().includes(searchQuery) || ch.group.toLowerCase().includes(searchQuery);
+      return matchesCategory && matchesSearch;
     });
 
-    if (Hls.isSupported()) {
-      const hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: true
-      });
+    if (filtered.length === 0) {
+      grid.innerHTML = \`
+        <div class="loading-state">
+          <p>No channels found</p>
+        </div>
+      \`;
+      return;
+    }
 
-      hls.loadSource(streamUrl);
-      hls.attachMedia(video);
+    filtered.forEach(ch => {
+      const card = document.createElement('div');
+      card.className = \`channel-card \${activeChannel && activeChannel.id === ch.id ? 'active' : ''}\`;
+      
+      const defaultLogo = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c5c6c7'%3E%3Cpath d='M21 6h-7.59l3.29-3.29L16 2l-4 4-4-4-.71.71L10.59 6H3c-1.1 0-2 .89-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.11-.9-2-2-2zm0 14H3V8h18v12zM9 10v8l7-4z'/%3E%3C/svg%3E";
+      
+      card.innerHTML = \`
+        <img class="channel-card-logo" src="\${ch.logo || defaultLogo}" onerror="this.src='\${defaultLogo}'" alt="\${ch.name}">
+        <div class="channel-card-info">
+          <div class="channel-card-name">\${ch.name}</div>
+          <div class="channel-card-group">\${ch.group}</div>
+        </div>
+        <div class="live-badge">LIVE</div>
+      \`;
 
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        video.play().catch(err => {
-          console.log('Autoplay blocked, user interaction required:', err);
+      card.addEventListener('click', () => selectChannel(ch));
+      grid.appendChild(card);
+    });
+  }
+
+  async function selectChannel(ch) {
+    activeChannel = ch;
+    
+    // Highlight active card
+    document.querySelectorAll('.channel-card').forEach(card => {
+      card.classList.remove('active');
+    });
+    
+    // Update active highlight class by matches
+    renderChannels();
+
+    // Update Player Metadata
+    document.getElementById('current-logo').src = ch.logo || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff'%3E%3Cpath d='M21 6h-7.59l3.29-3.29L16 2l-4 4-4-4-.71.71L10.59 6H3c-1.1 0-2 .89-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.11-.9-2-2-2zm0 14H3V8h18v12zM9 10v8l7-4z'/%3E%3C/svg%3E";
+    document.getElementById('current-title').textContent = ch.name;
+    document.getElementById('current-category').textContent = \`\${ch.group} • \${ch.manifestType.toUpperCase()}\`;
+
+    // Load Stream
+    await playStream(ch);
+  }
+
+  async function playStream(ch) {
+    const video = document.getElementById('player');
+    
+    // Clear existing HLS instance
+    if (hlsInstance) {
+      hlsInstance.destroy();
+      hlsInstance = null;
+    }
+
+    // Reset video source completely
+    video.src = '';
+    
+    const isMpd = ch.url.includes('.mpd') || ch.manifestType === 'mpd' || ch.url.includes('mpd.php');
+    
+    // Proxied URL for HLS streams (to handle CORS and relative TS segment paths)
+    const finalUrl = isMpd ? ch.url : \`\${proxyPrefix}\${encodeURIComponent(ch.url)}\`;
+
+    if (isMpd) {
+      if (shakaPlayer) {
+        // Clear DRM configurations from previous playback
+        shakaPlayer.configure({
+          drm: {
+            clearKeys: {}
+          }
         });
-      });
 
-      hls.on(Hls.Events.ERROR, function (event, data) {
-        if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              console.warn('Network error, attempting recovery:', data);
-              hls.startLoad();
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              console.warn('Media error, attempting recovery...');
-              hls.recoverMediaError();
-              break;
-            default:
-              hls.destroy();
-              break;
+        // Setup ClearKey keys if present
+        if (ch.licenseKey) {
+          const parts = ch.licenseKey.split(':');
+          if (parts.length === 2) {
+            const keyId = parts[0].trim();
+            const keyVal = parts[1].trim();
+            shakaPlayer.configure({
+              drm: {
+                clearKeys: {
+                  [keyId]: keyVal
+                }
+              }
+            });
           }
         }
-      });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = streamUrl;
+
+        try {
+          await shakaPlayer.load(finalUrl);
+          video.play().catch(e => console.log('Autoplay deferred:', e));
+        } catch (e) {
+          console.error('Shaka player load failed, retrying with proxy...', e);
+          try {
+            await shakaPlayer.load(\`\${proxyPrefix}\${encodeURIComponent(ch.url)}\`);
+            video.play().catch(err => console.log(err));
+          } catch (err2) {
+            console.error('Proxy fallback failed for DASH:', err2);
+          }
+        }
+      }
+    } else {
+      // HLS Playback using hls.js
+      if (Hls.isSupported()) {
+        hlsInstance = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+          xhrSetup: function (xhr, url) {
+            xhr.withCredentials = false;
+          }
+        });
+        hlsInstance.loadSource(finalUrl);
+        hlsInstance.attachMedia(video);
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+          video.play().catch(e => console.log('Autoplay deferred:', e));
+        });
+
+        hlsInstance.on(Hls.Events.ERROR, function (event, data) {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                console.warn('Network error, recovering...');
+                hlsInstance.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                console.warn('Media error, recovering...');
+                hlsInstance.recoverMediaError();
+                break;
+              default:
+                hlsInstance.destroy();
+                break;
+            }
+          }
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = finalUrl;
+        video.play().catch(e => console.log(e));
+      }
     }
-  });
+  }
 </script>
 </body>
-</html>`;
+</html>\`;
 
     return new Response(htmlContent, {
       headers: { 'Content-Type': 'text/html; charset=utf-8' }
