@@ -1,0 +1,558 @@
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title></title>
+    <meta name="referrer" content="no-referrer">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://cloud.umami.is">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.16.3/controls.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.16.3/shaka-player.ui.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    
+    
+    <style>
+        .shaka-video-container {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            overflow: hidden;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            object-fit: contain;
+            transition: all 0.2s ease;
+        }
+
+        .video-wrapper {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .shaka-overflow-menu-button {
+            color: white !important;
+        }
+
+        .shaka-controls-button-panel {
+            margin-bottom: 2px !important;
+        }
+
+        .shaka-video-container button {
+            color: white !important;
+        }
+
+        .shaka-video-container .material-icons-round {
+            color: white !important;
+        }
+
+        .wm {
+            text-transform: uppercase;
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            color: #f7f7f7;
+            font-weight: bold;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 2;
+            font-size: 14px;
+        }
+
+        video.ratio-fit {
+            object-fit: contain;
+        }
+
+        video.ratio-stretch {
+            object-fit: fill;
+        }
+
+        video.ratio-full {
+            object-fit: cover;
+        }
+
+        #loadingOverlay.opacity-0,
+        #loadingOverlay.hide {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .shaka-spinner,
+        shaka-spinner,
+        .shaka-video-container shaka-spinner {
+            display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+        }
+
+        .shaka-loading-spinner,
+        .shaka-loader,
+        .shaka-busy-container {
+            display: none !important;
+            opacity: 0 !important;
+        }
+    </style>
+</head>
+
+<body class="bg-black h-screen w-screen overflow-hidden font-sans m-0 p-0">
+   
+
+    <div class="shaka-video-container shaka-mobile" data-shaka-player-container="" shaka-controls="true">
+        <div class="shaka-video-container shaka-video" data-shaka-controls="" data-shaka-player="">
+            <div class="video-wrapper">
+                <video autoplay="" class="ratio-fit" crossorigin="anonymous" data-shaka-player="" id="video"
+                    playsinline=""></video>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed inset-0 flex flex-col justify-center items-center bg-black text-white z-50 transition-opacity duration-300 pointer-events-none"
+        id="loadingOverlay">
+        <span class="loading loading-spinner loading-lg text-error mb-2"></span>
+        <p class="font-bold" id="statusText">Loading...</p>
+    </div>
+
+    <script>
+        const CHANNELS_JSON_URL = "https://wispy-wave-3131.diwij76343.workers.dev/";
+        let channelData = null;
+        let streamUrl = "";
+
+        let lastTap = 0;
+        const DOUBLE_TAP_DELAY = 300;
+
+        function notifyFlutterRotation(action) {
+            if (window.RotationChannel && window.RotationChannel.postMessage) {
+                window.RotationChannel.postMessage(action);
+            }
+        }
+
+        function initRotationTracker() {
+            const handleFsChange = () => {
+                if (document.fullscreenElement || document.webkitIsFullScreen || document.mozFullScreenElement) {
+                    notifyFlutterRotation("toggleLandscape");
+                    if (screen.orientation && screen.orientation.lock) {
+                        screen.orientation.lock("landscape").catch(() => { });
+                    }
+                } else {
+                    notifyFlutterRotation("togglePortrait");
+                    if (screen.orientation && screen.orientation.unlock) {
+                        screen.orientation.unlock();
+                    }
+                }
+            };
+            document.addEventListener("fullscreenchange", handleFsChange);
+            document.addEventListener("webkitfullscreenchange", handleFsChange);
+            document.addEventListener("mozfullscreenchange", handleFsChange);
+            document.addEventListener("MSFullscreenChange", handleFsChange);
+        }
+
+        async function toggleFS() {
+            const container = document.querySelector(".shaka-video-container");
+            try {
+                if (!document.fullscreenElement) {
+                    if (container.requestFullscreen) { await container.requestFullscreen(); }
+                    else if (container.webkitRequestFullscreen) { await container.webkitRequestFullscreen(); }
+                } else {
+                    if (document.exitFullscreen) { await document.exitFullscreen(); }
+                }
+            } catch (err) {
+                console.error("FS Toggle Error:", err);
+            }
+        }
+
+        document.querySelector(".shaka-video-container").addEventListener("dblclick", (e) => {
+            if (e.target.tagName !== "BUTTON" && !e.target.classList.contains("shaka-range-container")) {
+                toggleFS();
+            }
+        });
+
+        document.querySelector(".shaka-video-container").addEventListener("touchstart", (e) => {
+            const now = Date.now();
+            if (now - lastTap < DOUBLE_TAP_DELAY) {
+                e.preventDefault();
+                toggleFS();
+            }
+            lastTap = now;
+        }, { passive: false });
+
+        document.addEventListener("contextmenu", (e) => e.preventDefault());
+        ["cut", "copy", "paste", "dragstart", "selectstart"].forEach((evt) => {
+            document.addEventListener(evt, (e) => e.preventDefault());
+        });
+
+        function hideLoading() {
+            document.getElementById("loadingOverlay").classList.add("opacity-0");
+            document.querySelectorAll('.shaka-spinner, shaka-spinner').forEach(el => el.style.display = 'none');
+        }
+
+        async function fetchConfig() {
+            const urlParams = new URLSearchParams(window.location.search);
+            let streamUrls = [];
+            let keyId = "";
+            let key = "";
+            let cookie = "";
+            let title = "";
+
+            const targetId = urlParams.get('id') || 'ss1h';
+
+            const statusText = document.getElementById("statusText");
+            statusText.innerText = "Loading channel...";
+
+            try {
+                const channelRes = await fetch(CHANNELS_JSON_URL);
+                const channelList = await channelRes.json();
+                let channel = channelList.find(c => String(c.id) === String(targetId));
+
+                if (channel) {
+                    streamUrls = [channel.url].filter(Boolean);
+                    keyId = channel.keyId || "";
+                    key = channel.key || "";
+                    cookie = channel.cookie || "";
+                    title = channel.name || 'Live Stream';
+
+                    channelData = {
+                        id: channel.id || targetId,
+                        title: title,
+                        url: channel.url || '',
+                        keyId: keyId,
+                        key: key,
+                        cookie: cookie
+                    };
+
+                    return channelData;
+                }
+            } catch (e) {
+                console.error("Error fetching or parsing channel JSON", e);
+            }
+
+            return false;
+        }
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const shakaObserver = new MutationObserver(() => {
+                document.querySelectorAll('.shaka-spinner, shaka-spinner').forEach(el => el.style.display = 'none');
+            });
+            shakaObserver.observe(document.body, { childList: true, subtree: true });
+
+            const STREAM_CONFIG = await fetchConfig();
+            if (!STREAM_CONFIG) {
+                hideLoading();
+                const statusText = document.getElementById("statusText");
+                statusText.innerText = "Channel not found";
+                return;
+            }
+
+            streamUrl = STREAM_CONFIG.url;
+            document.title = STREAM_CONFIG.title || "BrowserPlay PLUS";
+
+            initRotationTracker();
+            shaka.polyfill.installAll();
+
+            if (!shaka.Player.isBrowserSupported()) {
+                hideLoading();
+                return;
+            }
+
+            const video = document.getElementById("video");
+            const player = new shaka.Player(video);
+            const ui = new shaka.ui.Overlay(player, document.querySelector(".shaka-video-container"), video);
+
+            let retryCount = 0;
+            const maxRetries = 2;
+
+            player.addEventListener('error', (event) => {
+                console.error("Shaka Error:", event.detail);
+                const statusText = document.getElementById("statusText");
+
+                if (event.detail.code === 1001) {
+                    if (retryCount < maxRetries) {
+                        retryCount++;
+                        statusText.innerText = `Connection error. Retrying (${retryCount}/${maxRetries})...`;
+                        setTimeout(() => player.load(video.getAttribute('data-current-url')), 2000);
+                    } else {
+                        hideLoading();
+                        statusText.innerText = "Connection failed. Tap to retry.";
+                        statusText.style.cursor = "pointer";
+                        statusText.onclick = () => location.reload();
+                    }
+                }
+
+                if (event.detail.code === 6001) {
+                    statusText.innerText = "Stream error. Retrying...";
+                    if (retryCount < maxRetries) {
+                        retryCount++;
+                        setTimeout(() => location.reload(), 2000);
+                    } else {
+                        hideLoading();
+                    }
+                }
+
+                if (event.detail.code === 6002 || event.detail.code === 6003) {
+                    statusText.innerText = " DRM Error. Trying fallback...";
+                    setTimeout(() => location.reload(), 3000);
+                }
+            });
+
+            // Button bar: flex row, docked top-right
+            const btnBar = document.createElement('div');
+            btnBar.style.cssText = 'position:absolute;top:12px;right:8px;z-index:50;display:flex;flex-direction:row;gap:6px;align-items:center;';
+            document.querySelector('.shaka-video-container').appendChild(btnBar);
+
+            const btnStyle = 'background:#e53e3e;color:white;border:none;border-radius:6px;padding:5px 10px;font-size:12px;font-family:Arial,sans-serif;cursor:pointer;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.4);transition:transform 0.2s,opacity 0.3s;';
+
+            const volumeBoostBtn = document.createElement('button');
+            volumeBoostBtn.style.cssText = btnStyle;
+            volumeBoostBtn.innerHTML = '<i class="fas fa-volume-up"></i> 100%';
+            btnBar.appendChild(volumeBoostBtn);
+
+            const zoomBtn = document.createElement('button');
+            zoomBtn.style.cssText = btnStyle + 'min-width:72px;';
+            zoomBtn.innerHTML = '<i class="fas fa-search-plus"></i> FIT';
+            btnBar.appendChild(zoomBtn);
+
+            const nsIntentBtn = document.createElement('button');
+            nsIntentBtn.style.cssText = btnStyle;
+            nsIntentBtn.innerHTML = '<i class="fas fa-external-link-alt"></i> ';
+            btnBar.appendChild(nsIntentBtn);
+
+            ui.configure({
+                addBigPlayButton: true,
+                controlPanelElements: ["time_and_duration", "spacer", "mute", "volume", "language", "picture_in_picture", "quality", "fullscreen"],
+            });
+
+            const playerConfig = {
+                streaming: {
+                    lowLatencyMode: true,
+                    bufferingGoal: 4,
+                    rebufferingGoal: 0.5,
+                    bufferBehind: 10,
+                    retryParameters: { timeout: 8000, maxAttempts: 3 }
+                },
+                abr: { enabled: true, restrictions: { maxHeight: 1080 } }
+            };
+
+            if (STREAM_CONFIG.keyId && STREAM_CONFIG.key) {
+                playerConfig.drm = { clearKeys: { [STREAM_CONFIG.keyId]: STREAM_CONFIG.key } };
+            }
+            player.configure(playerConfig);
+
+            // Use URL with cookie embedded
+            let streamUrlVal = STREAM_CONFIG.url;
+
+            const urlCookieMatch = streamUrlVal.match(/[?&]cookie=([^&]+)/);
+            if (urlCookieMatch && !STREAM_CONFIG.cookie) {
+                STREAM_CONFIG.cookie = decodeURIComponent(urlCookieMatch[1]);
+            }
+
+            const authTokenMatch = streamUrlVal.match(/[?&]auth=[^&]+/);
+            if (authTokenMatch) {
+                const token = authTokenMatch[1];
+                if (!STREAM_CONFIG.cookie) {
+                    STREAM_CONFIG.cookie = `access_token=${token}`;
+                }
+            }
+
+            console.log("Stream URL:", streamUrlVal);
+            console.log("Cookie:", STREAM_CONFIG.cookie);
+
+            video.setAttribute('data-current-url', streamUrlVal);
+
+            const cookieHeader = STREAM_CONFIG.cookie || '';
+            player.getNetworkingEngine().registerRequestFilter((type, request) => {
+                request.headers["Referer"] = "https://www.jiotv.com/";
+                request.headers["User-Agent"] = "plaYtv/7.1.5 (Linux;Android 13) ExoPlayerLib/2.11.6";
+
+                if (cookieHeader && (type === shaka.net.NetworkingEngine.RequestType.MANIFEST ||
+                    type === shaka.net.NetworkingEngine.RequestType.SEGMENT)) {
+                    const uri = request.uris[0];
+                    if (!uri.includes('hdnea') && !uri.includes('__hdnea__')) {
+                        const sep = uri.includes('?') ? '&' : '?';
+                        request.uris[0] = uri + sep + cookieHeader;
+                    }
+                }
+            });
+
+            try {
+                await player.load(streamUrlVal);
+
+                const channelName = STREAM_CONFIG.title || "Live Stream";
+                const statusText = document.getElementById("statusText");
+                statusText.innerText = "Now Playing: " + channelName;
+
+                hideLoading();
+
+                const channelDisplay = document.createElement('div');
+                channelDisplay.id = 'channelDisplay';
+                channelDisplay.style.cssText = 'position:absolute;top:12px;left:12px;background:rgba(0,0,0,0.7);color:#fff;padding:6px 12px;border-radius:4px;font-size:14px;font-weight:bold;z-index:50;opacity:0;transition:opacity 0.3s;';
+                channelDisplay.innerHTML = '<i class="fas fa-tv"></i> ' + channelName;
+                document.querySelector('.shaka-video-container').appendChild(channelDisplay);
+                setTimeout(() => channelDisplay.style.opacity = '1', 500);
+                setTimeout(() => { channelDisplay.style.opacity = '0'; }, 5000);
+
+                video.play().catch(() => console.log("Autoplay blocked"));
+
+            } catch (loadError) {
+                console.error("Load error:", loadError);
+                const errorCode = loadError.code || (loadError.detail && loadError.detail.code) || 'unknown';
+                console.error("Error code:", errorCode);
+                hideLoading();
+                const statusText = document.getElementById("statusText");
+                statusText.innerText = "Stream error (" + errorCode + "). Tap to retry.";
+                statusText.style.cursor = "pointer";
+                statusText.onclick = () => location.reload();
+            }
+
+            // Zoom button — object-fit modes
+            const zoomModes = [
+                { label: 'FIT', objectFit: 'contain' },
+                { label: 'STRETCH', objectFit: 'fill' },
+                { label: 'FULL', objectFit: 'cover' }
+            ];
+            let zoomIndex = parseInt(localStorage.getItem('zoomIndex') || '0');
+            if (zoomIndex >= zoomModes.length) zoomIndex = 0;
+
+            function applyZoom(idx, animate = true) {
+                const m = zoomModes[idx];
+                video.style.objectFit = m.objectFit;
+                video.style.transform = 'scale(1)';
+                video.className = video.className.replace(/ratio-\w+/g, '');
+                video.classList.add('ratio-' + m.label.toLowerCase());
+                zoomBtn.innerHTML = `<i class="fas fa-search-plus"></i> ${m.label}`;
+                localStorage.setItem('zoomIndex', idx);
+                zoomIndex = idx;
+            }
+
+            applyZoom(zoomIndex, false);
+
+            zoomBtn.addEventListener('click', () => {
+                applyZoom((zoomIndex + 1) % zoomModes.length);
+            });
+
+            const reApplyZoom = () => setTimeout(() => applyZoom(zoomIndex, false), 150);
+            document.addEventListener('fullscreenchange', reApplyZoom);
+            document.addEventListener('webkitfullscreenchange', reApplyZoom);
+            video.addEventListener('dblclick', () => applyZoom(0, false));
+
+            // Volume Boost
+            let audioCtx;
+            let gainNode;
+            let source;
+            const volumeLevels = [100, 200, 300];
+            let currentVolIndex = 0;
+
+            volumeBoostBtn.addEventListener('click', () => {
+                if (!audioCtx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    audioCtx = new AudioContext();
+                    source = audioCtx.createMediaElementSource(video);
+                    gainNode = audioCtx.createGain();
+                    source.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                }
+
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                currentVolIndex = (currentVolIndex + 1) % volumeLevels.length;
+                const volLevel = volumeLevels[currentVolIndex];
+                const gainValue = volLevel / 100;
+
+                if (gainNode) {
+                    gainNode.gain.value = gainValue;
+                }
+
+                volumeBoostBtn.innerHTML = `<i class="fas fa-volume-up"></i> ${volLevel}%`;
+            });
+
+            // NS Player Intent
+            nsIntentBtn.addEventListener('click', () => {
+                let baseUrl = streamUrlVal || (channelData ? channelData.url : '');
+                if (!baseUrl) return;
+
+                let params = [];
+                let cookieValue = channelData ? channelData.cookie : "";
+
+                if (!cookieValue && baseUrl.includes("__hdnea__=")) {
+                    try {
+                        const urlObj = new URL(baseUrl);
+                        if (urlObj.searchParams.has("__hdnea__")) {
+                            cookieValue = "__hdnea__=" + urlObj.searchParams.get("__hdnea__");
+                        }
+                    } catch (e) {
+                        const match = baseUrl.match(/__hdnea__=([^&]+)/);
+                        if (match) cookieValue = "__hdnea__=" + match[1];
+                    }
+                }
+
+                if (cookieValue) {
+                    params.push(`Cookie=${encodeURIComponent(cookieValue)}`);
+                }
+
+                if (channelData && channelData.keyId && channelData.key) {
+                    params.push(`drmScheme=clearkey`);
+                    params.push(`drmLicense=${channelData.keyId}:${channelData.key}`);
+                }
+
+                let intentUrl = `intent:${baseUrl}`;
+                if (params.length > 0) {
+                    if (baseUrl.includes('?')) {
+                        intentUrl += `&%7C${params.join('&')}`;
+                    } else {
+                        intentUrl += `?%7C${params.join('&')}`;
+                    }
+                }
+                intentUrl += `#Intent;action=android.intent.action.VIEW;type=video/*;package=com.genuine.leone;end.`;
+
+                console.log("NS Player Intent URL:", intentUrl);
+
+                window.location.href = intentUrl;
+            });
+
+            // Auto-hide button bar
+            let hideTimeout;
+            const container = document.querySelector('.shaka-video-container');
+
+            const showButtons = () => {
+                btnBar.style.opacity = '1';
+                btnBar.style.pointerEvents = 'auto';
+                clearTimeout(hideTimeout);
+                hideTimeout = setTimeout(hideButtons, 3000);
+            };
+            const hideButtons = () => {
+                btnBar.style.opacity = '0';
+                btnBar.style.pointerEvents = 'none';
+            };
+
+            container.addEventListener('mousemove', showButtons);
+            container.addEventListener('touchstart', showButtons);
+            container.addEventListener('click', showButtons);
+            hideTimeout = setTimeout(hideButtons, 3000);
+        });
+    </script>
+</body>
+
+</html>
+
