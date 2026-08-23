@@ -220,6 +220,18 @@
             const statusText = document.getElementById("statusText");
             statusText.innerText = "Loading channel...";
 
+            // Direct stream override for specific channels
+            if (String(targetId) === '891') {
+                return {
+                    id: '891',
+                    title: 'Live Stream',
+                    url: 'https://jp.ipl2026.workers.dev/?id=891',
+                    keyId: '',
+                    key: '',
+                    cookie: ''
+                };
+            }
+
             try {
                 const channelRes = await fetch(CHANNELS_JSON_URL);
                 const channelList = await channelRes.json();
@@ -380,11 +392,14 @@
             video.setAttribute('data-current-url', streamUrlVal);
 
             const cookieHeader = STREAM_CONFIG.cookie || '';
+            const isDirectStream = String(STREAM_CONFIG.id) === '891';
             player.getNetworkingEngine().registerRequestFilter((type, request) => {
-                request.headers["Referer"] = "https://www.jiotv.com/";
-                request.headers["User-Agent"] = "plaYtv/7.1.5 (Linux;Android 13) ExoPlayerLib/2.11.6";
+                if (!isDirectStream) {
+                    request.headers["Referer"] = "https://www.jiotv.com/";
+                    request.headers["User-Agent"] = "plaYtv/7.1.5 (Linux;Android 13) ExoPlayerLib/2.11.6";
+                }
 
-                if (cookieHeader && (type === shaka.net.NetworkingEngine.RequestType.MANIFEST ||
+                if (!isDirectStream && cookieHeader && (type === shaka.net.NetworkingEngine.RequestType.MANIFEST ||
                     type === shaka.net.NetworkingEngine.RequestType.SEGMENT)) {
                     const uri = request.uris[0];
                     if (!uri.includes('hdnea') && !uri.includes('__hdnea__')) {
